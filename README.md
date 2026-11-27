@@ -6,6 +6,34 @@ GPX or FIT file and draws the route and the elevation profile.
 The card is made for overlay on a photo or a video. The background stays
 transparent, and the text is white with a black outline.
 
+## Examples
+
+These two cards come from `examples/demo.gpx`. The dark background is only for
+the preview. The PNG file keeps a transparent background.
+
+Vertical layout, `--width 800`:
+
+<img src="examples/vertical-preview.png" width="300" alt="Vertical card: distance, time, pace, elevation, route, and elevation profile">
+
+Horizontal layout, `--layout h --width 3200 --height 700`:
+
+<img src="examples/horizontal-preview.png" width="900" alt="Horizontal banner: the four stats in one row, the route on the right, and the elevation profile below">
+
+The example cards also use `--outline-width`. The outline keeps the text
+readable on a light page. On a photo, `--outline-width 0` gives the text
+without an edge.
+
+`examples/` holds these files:
+
+1. `demo.gpx`: a 12 km loop with 56 m of climb. The track is made up, not a
+   real run.
+2. `vertical.png` and `horizontal.png`: the cards, with a transparent
+   background.
+3. `vertical-preview.png` and `horizontal-preview.png`: the same cards on a
+   dark background.
+4. `make_examples.py`: builds the files again. Run
+   `python examples/make_examples.py`.
+
 ## What the card shows
 
 The stats appear in this order:
@@ -24,7 +52,10 @@ The vertical layout stacks the stats from top to bottom. The route is a square
 block below the stats. The elevation profile sits below the route.
 
 The horizontal layout puts the stats in one row. Use it for wide banners and
-video lower thirds.
+video lower thirds. A thin separator line divides the stats from the route.
+
+The route keeps its true shape in both layouts. The tool corrects the length of
+a longitude degree for the latitude, so a route does not look stretched.
 
 ## Requirements
 
@@ -81,7 +112,7 @@ python running-card.py my_run.fit --metric speed --width 1200
 | `--metric` | `pace`, `speed` | `pace` | Shows pace in min/km or speed in km/h. Use `speed` for cycling. |
 | `--layout` | `v`, `h` | `v` | Vertical or horizontal layout. |
 | `--width` | pixels | 1200 for `v`, 3200 for `h` | Canvas width. |
-| `--height` | pixels | auto | Canvas height. When you omit it, the tool calculates the height from the content. |
+| `--height` | pixels | auto | Canvas height. When you omit it, the tool calculates the height from the content. In the horizontal layout the route uses the full height, so this option also sets the size of the route. |
 | `--distance-source` | `gps`, `footpod` | `footpod` | Distance source for FIT files. |
 | `--pace-source` | `gps`, `footpod` | `footpod` | Pace source for FIT files. |
 | `--ele-band` | metres | `1.0` | Elevation hysteresis band. See the note below. |
