@@ -141,24 +141,32 @@ def fit_cover(img: Image.Image, size) -> Image.Image:
 
 
 def place(frame: Image.Image, card_path: Path, x_frac: float,
-          width_frac: float, y_frac: float = None) -> None:
+          width_frac: float, v_align: str = "center",
+          v_margin: float = 0.0) -> None:
     """Scale the card to a share of the frame width, then paste it.
 
-    x_frac is the left edge as a share of the frame width. y_frac is the top
-    edge; use None to centre the card.
+    x_frac is the left edge as a share of the frame width. v_align is "top",
+    "center", or "bottom". v_margin is the gap to the edge, as a share.
     """
     card = Image.open(card_path).convert("RGBA")
     w = max(1, round(frame.width * width_frac))
     h = max(1, round(card.height * w / card.width))
     card = card.resize((w, h), Image.LANCZOS)
-    y = (frame.height - h) // 2 if y_frac is None else round(frame.height * y_frac)
+    gap = round(frame.height * v_margin)
+    if v_align == "top":
+        y = gap
+    elif v_align == "bottom":
+        y = frame.height - h - gap
+    else:
+        y = (frame.height - h) // 2
     frame.alpha_composite(card, (round(frame.width * x_frac), max(0, y)))
 
 
 def write_setup(background: Path, size, card: Path, out: Path,
-                x_frac: float, width_frac: float, y_frac: float = None) -> None:
+                x_frac: float, width_frac: float, v_align: str = "center",
+                v_margin: float = 0.0) -> None:
     frame = fit_cover(Image.open(background).convert("RGB"), size).convert("RGBA")
-    place(frame, card, x_frac, width_frac, y_frac)
+    place(frame, card, x_frac, width_frac, v_align, v_margin)
     frame.convert("RGB").save(out, quality=82, optimize=True, progressive=True)
     print(f"wrote {out.relative_to(ROOT)}")
 
@@ -181,12 +189,13 @@ def main() -> None:
     # The card of a real 10 km race, from the FIT file of the watch.
     race_card = HERE / "race-card.png"
     render_card(HERE / "dagersheim-waldlauf.fit", race_card,
-                ["--width", "900", "--outline-width", "4"])
+                ["--width", "900", "--outline", "0"])
 
-    # The photo is 2:3. The left edge is free, so the card stays clear of the
-    # runner. The card is 25 % of the photo width.
+    # The photo is 2:3. The runner fills the centre and the right side, so the
+    # card sits low at the left edge, where the background is free.
     write_setup(BACKGROUNDS / "race-dagersheim.jpg", (2000, 3000), race_card,
-                HERE / "setup-race.jpg", x_frac=0.03, width_frac=0.25)
+                HERE / "setup-race.jpg", x_frac=0.02, width_frac=0.40,
+                v_align="bottom", v_margin=0.01)
 
 
 if __name__ == "__main__":

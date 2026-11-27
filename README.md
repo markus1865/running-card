@@ -32,9 +32,12 @@ side, clear of the runner.
 The card is the same PNG file, so it also goes into a video editor as an
 overlay. `make_examples.py` puts the card on the photo with Pillow.
 
-The example cards also use `--outline-width`. The outline keeps the text
-readable on a light background. On a photo, `--outline-width 0` gives the text
-without an edge.
+The two sample cards use `--outline-width`, so the white text stays readable on
+a white page. The race card uses the default, `--outline 0`, because the
+blurred photo behind it is dark and even. Add an outline when the background is
+light or busy.
+
+The option has two names: `--outline-width` and `--outline`.
 
 ### Files in `examples/`
 
@@ -133,7 +136,7 @@ python running-card.py my_run.fit --metric speed --width 1200
 | `--distance-source` | `gps`, `footpod` | `footpod` | Distance source for FIT files. |
 | `--pace-source` | `gps`, `footpod` | `footpod` | Pace source for FIT files. |
 | `--ele-band` | metres | `1.0` | Elevation hysteresis band. See the note below. |
-| `--outline-width` | pixels | `0` | Text outline width. `0` turns the outline off. |
+| `--outline-width`, `--outline` | pixels | `0` | Text outline width. `0` turns the outline off. |
 | `--output` | path | input name with `.png` | Output PNG path. |
 
 ## Elevation gain

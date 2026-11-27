@@ -34,6 +34,7 @@ All options:
     --width  N          canvas width  in pixels (default 1200 vertical, 3200 horizontal)
     --height N          canvas height in pixels (default auto)
     --outline-width PX  text outline width in pixels (default: 0; 0 disables)
+                        --outline does the same
     --ele-band M        elevation hysteresis band in metres (default 1.0, matches Garmin)
                         use ~8.0 to match Runalyze's more aggressive noise filtering
     --output PATH       output PNG path (default: input file name with .png ending)
@@ -918,7 +919,7 @@ def main():
                    choices=["v","h"], help="vertical (v) or horizontal (h) layout")
     p.add_argument("--width",    metavar="PX",    type=int, help="canvas width in pixels")
     p.add_argument("--height",   metavar="PX",    type=int, help="canvas height in pixels")
-    p.add_argument("--outline-width", metavar="PX", type=int, default=0,
+    p.add_argument("--outline-width", "--outline", metavar="PX", type=int, default=0,
                    help="text outline width in pixels (default: 0; 0 disables)")
     p.add_argument("--ele-band", metavar="M",     type=float, default=1.0,
                    dest="ele_band",
@@ -927,7 +928,7 @@ def main():
                    help="output PNG path (default: input file name with .png ending)")
     args = p.parse_args()
     if args.outline_width is not None and args.outline_width < 0:
-        p.error("--outline-width must be non-negative")
+        p.error("--outline must be non-negative")
 
     norm_points = None
     elevations = None
