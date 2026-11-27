@@ -2,13 +2,12 @@
 """Build the files in examples/.
 
 Steps:
-  1. Write demo.gpx and demo-ride.gpx: made-up tracks with a plausible
-     elevation profile.
+  1. Write demo.gpx: a made-up 12 km run with a plausible elevation profile.
   2. Run running-card.py for the vertical and the horizontal layout.
   3. Write a preview of each card on a dark background.
-  4. Place the cards on real photos from Wikimedia Commons.
+  4. Read the real race file and put its card on a race photo.
 
-The cards keep a transparent background. The previews and the setups only show
+The cards keep a transparent background. The previews and the setup only show
 how a card looks on top of a background, as on a photo or in a video editor.
 
 Run from the repository root:
@@ -128,7 +127,7 @@ def write_preview(card_path: Path, preview_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Setups: a card on a real photo
+# A card on a photo
 # ---------------------------------------------------------------------------
 
 def fit_cover(img: Image.Image, size) -> Image.Image:
@@ -141,70 +140,53 @@ def fit_cover(img: Image.Image, size) -> Image.Image:
     return img.crop((left, top, left + tw, top + th))
 
 
-def place(frame: Image.Image, card_path: Path, corner: str, margin: float,
-          height_frac: float = None, width_frac: float = None) -> None:
-    """Scale the card, then put it in a corner. Use one of the two fractions."""
+def place(frame: Image.Image, card_path: Path, x_frac: float,
+          width_frac: float, y_frac: float = None) -> None:
+    """Scale the card to a share of the frame width, then paste it.
+
+    x_frac is the left edge as a share of the frame width. y_frac is the top
+    edge; use None to centre the card.
+    """
     card = Image.open(card_path).convert("RGBA")
-    if width_frac is not None:
-        w = int(frame.width * width_frac)
-        h = round(card.height * w / card.width)
-    else:
-        h = int(frame.height * height_frac)
-        w = round(card.width * h / card.height)
+    w = max(1, round(frame.width * width_frac))
+    h = max(1, round(card.height * w / card.width))
     card = card.resize((w, h), Image.LANCZOS)
-
-    mx = int(frame.width * margin)
-    my = int(frame.height * margin)
-    x = mx if corner.endswith("left") else frame.width - w - mx
-    if corner.endswith("center"):
-        x = (frame.width - w) // 2
-    y = my if corner.startswith("top") else frame.height - h - my
-    frame.alpha_composite(card, (x, y))
+    y = (frame.height - h) // 2 if y_frac is None else round(frame.height * y_frac)
+    frame.alpha_composite(card, (round(frame.width * x_frac), max(0, y)))
 
 
-def write_setup(background: Path, size, card: Path, out: Path, corner: str,
-                margin: float, height_frac: float = None,
-                width_frac: float = None) -> None:
+def write_setup(background: Path, size, card: Path, out: Path,
+                x_frac: float, width_frac: float, y_frac: float = None) -> None:
     frame = fit_cover(Image.open(background).convert("RGB"), size).convert("RGBA")
-    place(frame, card, corner, margin, height_frac, width_frac)
+    place(frame, card, x_frac, width_frac, y_frac)
     frame.convert("RGB").save(out, quality=82, optimize=True, progressive=True)
     print(f"wrote {out.relative_to(ROOT)}")
 
 
 def main() -> None:
     run = HERE / "demo.gpx"
-    ride = HERE / "demo-ride.gpx"
     write_gpx(run, target_km=12.0, seconds=3600)
-    write_gpx(ride, target_km=45.0, seconds=5400,
-              base_ele=1210.0, climb=180.0, climb2=90.0)
 
     vertical = HERE / "vertical.png"
     horizontal = HERE / "horizontal.png"
-    speed = HERE / "horizontal-speed.png"
     # The outline keeps the white text readable on a light background.
     render_card(run, vertical, ["--width", "800", "--outline-width", "4"])
     render_card(run, horizontal,
                 ["--layout", "h", "--width", "3200", "--height", "700",
                  "--outline-width", "6"])
-    render_card(ride, speed,
-                ["--layout", "h", "--width", "3200", "--height", "700",
-                 "--metric", "speed", "--outline-width", "6"])
 
     write_preview(vertical, HERE / "vertical-preview.png")
     write_preview(horizontal, HERE / "horizontal-preview.png")
 
-    # A 16:9 video frame, a portrait card on the right.
-    write_setup(BACKGROUNDS / "trail-helvellyn.jpg", (1400, 788), vertical,
-                HERE / "setup-trail.jpg", "top-right", 0.03,
-                height_frac=0.92)
-    # A 16:9 video frame, a banner across the bottom, speed mode.
-    write_setup(BACKGROUNDS / "cycling-yellowstone.jpg", (1400, 788), speed,
-                HERE / "setup-cycling.jpg", "bottom-center", 0.04,
-                width_frac=0.92)
-    # A square social post, the card at the left.
-    write_setup(BACKGROUNDS / "city-jogger.jpg", (1000, 1000), vertical,
-                HERE / "setup-city.jpg", "bottom-left", 0.04,
-                height_frac=0.86)
+    # The card of a real 10 km race, from the FIT file of the watch.
+    race_card = HERE / "race-card.png"
+    render_card(HERE / "dagersheim-waldlauf.fit", race_card,
+                ["--width", "900", "--outline-width", "4"])
+
+    # The photo is 2:3. The left edge is free, so the card stays clear of the
+    # runner. The card is 25 % of the photo width.
+    write_setup(BACKGROUNDS / "race-dagersheim.jpg", (2000, 3000), race_card,
+                HERE / "setup-race.jpg", x_frac=0.03, width_frac=0.25)
 
 
 if __name__ == "__main__":
