@@ -156,6 +156,11 @@ route has a white start disc and a checkered finish disc. The text is white.
 All other pixels are transparent, so you can place the PNG on any background,
 and you can put it in a video editor as an overlay.
 
+## Contributing
+
+See `CONTRIBUTING.md`. Open an issue for a large change. A pull request needs a
+passing `smoke` check before a merge.
+
 ## Licence
 
 MIT. See `LICENSE`.

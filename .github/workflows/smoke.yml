@@ -1,0 +1,50 @@
+name: Smoke test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get the code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fontconfig fonts-liberation
+          python -m pip install --upgrade pip
+          pip install Pillow fitparse
+
+      - name: Check the syntax
+        run: python -m py_compile running-card.py examples/make_examples.py
+
+      - name: Make a card from a GPX file
+        run: python running-card.py examples/demo.gpx --outline-width 2 --output /tmp/vertical.png
+
+      - name: Make a card from a FIT file
+        run: python running-card.py examples/dagersheim-waldlauf.fit --layout h --metric speed --output /tmp/horizontal.png
+
+      - name: Check the PNG files
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          for name in ("/tmp/vertical.png", "/tmp/horizontal.png"):
+              data = Path(name).read_bytes()
+              assert data.startswith(b"\x89PNG\r\n\x1a\n"), name
+              assert len(data) > 1000, name
+              print(f"{name}: {len(data)} bytes")
+          PY
