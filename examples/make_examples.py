@@ -194,7 +194,7 @@ def main() -> None:
     # The photo is 2:3. The runner fills the centre and the right side, so the
     # card sits low at the left edge, where the background is free.
     write_setup(BACKGROUNDS / "race-dagersheim.jpg", (2000, 3000), race_card,
-                HERE / "setup-race.jpg", x_frac=0.02, width_frac=0.40,
+                HERE / "setup-race.jpg", x_frac=0.01, width_frac=0.40,
                 v_align="bottom", v_margin=0.01)
 
 
