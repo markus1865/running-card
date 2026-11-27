@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-running_card.py
+running-card.py
 ===============
 Generate a transparent-background PNG with running stats and optional route.
 
@@ -14,13 +14,13 @@ Layout can be vertical (top-to-bottom) or horizontal (left-to-right).
 Usage
 -----
 Interactive prompt (no route):
-    python running_card.py
-    python running_card.py --layout h
-    python running_card.py --width 1920 --height 1080
+    python running-card.py
+    python running-card.py --layout h
+    python running-card.py --width 1920 --height 1080
 
 From a GPX or FIT file:
-    python running_card.py my_run.gpx
-    python running_card.py my_run.fit --layout h --width 1280 --height 400
+    python running-card.py my_run.gpx
+    python running-card.py my_run.fit --layout h --width 1280 --height 400
 
 The output file name is the input file name with a .png ending
 (my_run.gpx -> my_run.png).  Use --output to set another path.
@@ -31,7 +31,7 @@ All options:
     --pace-source {gps,footpod}      Pace source for FIT files (default: footpod)
     --metric {pace,speed}            show pace (min/km) or speed (km/h) (default: pace)
     --layout v|h        vertical (default) or horizontal layout
-    --width  N          canvas width  in pixels (default 600 vertical, 1200 horizontal)
+    --width  N          canvas width  in pixels (default 1200 vertical, 3200 horizontal)
     --height N          canvas height in pixels (default auto)
     --outline-width PX  text outline width in pixels (default: 0; 0 disables)
     --ele-band M        elevation hysteresis band in metres (default 1.0, matches Garmin)
@@ -39,7 +39,8 @@ All options:
     --output PATH       output PNG path (default: input file name with .png ending)
 
 Dependencies:
-    pip install Pillow gpxpy
+    pip install Pillow
+    pip install fitparse    # only for FIT files
 
 """
 
@@ -173,7 +174,7 @@ def _fit_semicircles_to_degrees(value: float) -> float:
     return value * 180.0 / (2**31)
 
 
-def parse_fit(path: str, ele_band: float = 1.0, distance_source: str = "gps", pace_source: str = "gps"):
+def parse_fit(path: str, ele_band: float = 1.0, distance_source: str = "footpod", pace_source: str = "footpod"):
     """Parse a FIT file. Returns (total_seconds, distance_km, elevation_gain_m, norm_points, elevations, pace_min_km)."""
     try:
         from fitparse import FitFile
@@ -216,8 +217,6 @@ def parse_fit(path: str, ele_band: float = 1.0, distance_source: str = "gps", pa
 
         distance = fields.get("distance")
         if distance is not None:
-            footpod_distance_m = float(distance)
-        if distance is not None and distance_source == "footpod":
             footpod_distance_m = float(distance)
 
         speed = fields.get("enhanced_speed")
