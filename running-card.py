@@ -350,11 +350,13 @@ def parse_time_input(text: str) -> int:
     try:
         if len(parts) == 3:
             return int(parts[0])*3600 + int(parts[1])*60 + int(parts[2])
-        elif len(parts) == 2:
+        if len(parts) == 2:
             return int(parts[0])*60 + int(parts[1])
-        return int(parts[0])
+        if len(parts) == 1:
+            return int(parts[0])
     except ValueError:
-        raise ValueError(f"Cannot parse '{text}'. Use HH:MM:SS or MM:SS.")
+        pass
+    raise ValueError(f"Cannot parse '{text}'. Use HH:MM:SS or MM:SS.")
 
 
 # ---------------------------------------------------------------------------

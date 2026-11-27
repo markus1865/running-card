@@ -26,10 +26,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y fontconfig fonts-liberation
           python -m pip install --upgrade pip
-          pip install Pillow fitparse
+          pip install Pillow fitparse pytest
 
       - name: Check the syntax
         run: python -m py_compile running-card.py examples/make_examples.py
+
+      - name: Run the tests
+        run: python -m pytest -q
 
       - name: Make a card from a GPX file
         run: python running-card.py examples/demo.gpx --outline-width 2 --output /tmp/vertical.png

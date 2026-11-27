@@ -28,21 +28,22 @@ Keep one pull request for one change.
 Install the dependencies:
 
 ```
-pip install Pillow fitparse
+pip install Pillow fitparse pytest
 ```
 
 Run these commands from the repository root:
 
 ```
 python -m py_compile running-card.py examples/make_examples.py
+python -m pytest
 python running-card.py examples/demo.gpx --output /tmp/demo.png
 python running-card.py examples/dagersheim-waldlauf.fit --output /tmp/race.png
 ```
 
 Open the two PNG files and look at them.
 
-GitHub runs the same steps on every pull request. A pull request needs a
-passing `smoke` check before a merge.
+GitHub runs the tests and the smoke check on every pull request. A pull
+request needs a passing `smoke` check before a merge.
 
 ## Rules for a change
 
@@ -50,10 +51,11 @@ passing `smoke` check before a merge.
 2. Add a dependency only when the Python standard library cannot do the task.
    Document the dependency in the README.
 3. Update the README when an option or the output changes.
-4. Run `python examples/make_examples.py` when the card output changes, and
+4. Add a test when a change touches the stats, the route, or a layout.
+5. Run `python examples/make_examples.py` when the card output changes, and
    commit the new example files.
-5. Keep the code style of the file. Keep the comments short and useful.
-6. Write the commit message in the imperative, for example
+6. Keep the code style of the file. Keep the comments short and useful.
+7. Write the commit message in the imperative, for example
    `Add the outline option`.
 
 ## Licence
