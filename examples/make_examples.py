@@ -2,12 +2,14 @@
 """Build the files in examples/.
 
 Steps:
-  1. Write demo.gpx: a closed 12 km loop with a plausible elevation profile.
+  1. Write demo.gpx and demo-ride.gpx: made-up tracks with a plausible
+     elevation profile.
   2. Run running-card.py for the vertical and the horizontal layout.
   3. Write a preview of each card on a dark background.
+  4. Place the cards on real photos from Wikimedia Commons.
 
-The cards keep a transparent background. The previews only show how the card
-looks on top of a background, as on a photo or in a video editor.
+The cards keep a transparent background. The previews and the setups only show
+how a card looks on top of a background, as on a photo or in a video editor.
 
 Run from the repository root:
     python examples/make_examples.py
@@ -23,9 +25,8 @@ from PIL import Image
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
+BACKGROUNDS = HERE / "backgrounds"
 
-TARGET_KM = 12.0
-SECONDS = 3600            # 60 min, so the pace is about 5:00 /km
 STEP_S = 5
 LOOP_FRACTION = 0.97      # stop just before the start, so both markers show
 LAT0, LON0 = 48.7800, 9.1800
@@ -51,11 +52,13 @@ def loop_shape(n):
     return pts
 
 
-def write_gpx(path: Path) -> None:
-    n = 1 + SECONDS // STEP_S
+def write_gpx(path: Path, target_km: float, seconds: int,
+              base_ele: float = 498.0, climb: float = 46.0,
+              climb2: float = 22.0) -> None:
+    n = 1 + seconds // STEP_S
     pts = [(LAT0 + x * 0.030, LON0 + y * 0.0185) for x, y in loop_shape(n)]
 
-    # Scale about the centre until the track is TARGET_KM long.
+    # Scale about the centre until the track has the target length.
     for _ in range(40):
         lats = [p[0] for p in pts]
         lons = [p[1] for p in pts]
@@ -65,7 +68,7 @@ def write_gpx(path: Path) -> None:
             haversine(pts[i - 1][0], pts[i - 1][1], pts[i][0], pts[i][1])
             for i in range(1, len(pts))
         )
-        factor = (TARGET_KM * 1000) / dist
+        factor = (target_km * 1000) / dist
         if abs(factor - 1.0) < 0.002:
             break
         pts = [(latc + (la - latc) * factor, lonc + (lo - lonc) * factor) for la, lo in pts]
@@ -75,20 +78,20 @@ def write_gpx(path: Path) -> None:
         '<gpx version="1.1" creator="running-card"',
         '     xmlns="http://www.topografix.com/GPX/1/1">',
         "  <metadata>",
-        "    <name>Morning loop</name>",
+        f"    <name>{path.stem}</name>",
         "    <time>2026-11-22T09:12:00Z</time>",
         "  </metadata>",
         "  <trk>",
-        "    <name>Morning loop</name>",
+        f"    <name>{path.stem}</name>",
         "    <trkseg>",
     ]
     for i, (lat, lon) in enumerate(pts):
         frac = i / (len(pts) - 1)
         # One long climb, one short climb, and small ground noise.
         ele = (
-            498.0
-            + 46.0 * max(0.0, math.sin(math.pi * frac)) ** 2
-            + 22.0 * max(0.0, math.sin(math.pi * (frac - 0.62) / 0.30)) ** 2
+            base_ele
+            + climb * max(0.0, math.sin(math.pi * frac)) ** 2
+            + climb2 * max(0.0, math.sin(math.pi * (frac - 0.62) / 0.30)) ** 2
             + 0.8 * math.sin(19 * math.pi * frac)
         )
         when = (START + timedelta(seconds=i * STEP_S)).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -104,6 +107,7 @@ def write_gpx(path: Path) -> None:
 def render_card(gpx: Path, out: Path, extra) -> None:
     cmd = [sys.executable, str(ROOT / "running-card.py"), str(gpx), "--output", str(out), *extra]
     subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
+    print(f"wrote {out.relative_to(ROOT)}")
 
 
 def gradient(size, top=(18, 24, 36), bottom=(64, 70, 82)) -> Image.Image:
@@ -123,20 +127,84 @@ def write_preview(card_path: Path, preview_path: Path) -> None:
     print(f"wrote {preview_path.relative_to(ROOT)}")
 
 
+# ---------------------------------------------------------------------------
+# Setups: a card on a real photo
+# ---------------------------------------------------------------------------
+
+def fit_cover(img: Image.Image, size) -> Image.Image:
+    """Crop the photo to the target aspect ratio, then resize it."""
+    tw, th = size
+    s = max(tw / img.width, th / img.height)
+    w, h = round(img.width * s), round(img.height * s)
+    img = img.resize((w, h), Image.LANCZOS)
+    left, top = (w - tw) // 2, (h - th) // 2
+    return img.crop((left, top, left + tw, top + th))
+
+
+def place(frame: Image.Image, card_path: Path, corner: str, margin: float,
+          height_frac: float = None, width_frac: float = None) -> None:
+    """Scale the card, then put it in a corner. Use one of the two fractions."""
+    card = Image.open(card_path).convert("RGBA")
+    if width_frac is not None:
+        w = int(frame.width * width_frac)
+        h = round(card.height * w / card.width)
+    else:
+        h = int(frame.height * height_frac)
+        w = round(card.width * h / card.height)
+    card = card.resize((w, h), Image.LANCZOS)
+
+    mx = int(frame.width * margin)
+    my = int(frame.height * margin)
+    x = mx if corner.endswith("left") else frame.width - w - mx
+    if corner.endswith("center"):
+        x = (frame.width - w) // 2
+    y = my if corner.startswith("top") else frame.height - h - my
+    frame.alpha_composite(card, (x, y))
+
+
+def write_setup(background: Path, size, card: Path, out: Path, corner: str,
+                margin: float, height_frac: float = None,
+                width_frac: float = None) -> None:
+    frame = fit_cover(Image.open(background).convert("RGB"), size).convert("RGBA")
+    place(frame, card, corner, margin, height_frac, width_frac)
+    frame.convert("RGB").save(out, quality=82, optimize=True, progressive=True)
+    print(f"wrote {out.relative_to(ROOT)}")
+
+
 def main() -> None:
-    gpx = HERE / "demo.gpx"
-    write_gpx(gpx)
+    run = HERE / "demo.gpx"
+    ride = HERE / "demo-ride.gpx"
+    write_gpx(run, target_km=12.0, seconds=3600)
+    write_gpx(ride, target_km=45.0, seconds=5400,
+              base_ele=1210.0, climb=180.0, climb2=90.0)
 
     vertical = HERE / "vertical.png"
     horizontal = HERE / "horizontal.png"
+    speed = HERE / "horizontal-speed.png"
     # The outline keeps the white text readable on a light background.
-    render_card(gpx, vertical, ["--width", "800", "--outline-width", "4"])
-    render_card(gpx, horizontal,
+    render_card(run, vertical, ["--width", "800", "--outline-width", "4"])
+    render_card(run, horizontal,
                 ["--layout", "h", "--width", "3200", "--height", "700",
                  "--outline-width", "6"])
+    render_card(ride, speed,
+                ["--layout", "h", "--width", "3200", "--height", "700",
+                 "--metric", "speed", "--outline-width", "6"])
 
     write_preview(vertical, HERE / "vertical-preview.png")
     write_preview(horizontal, HERE / "horizontal-preview.png")
+
+    # A 16:9 video frame, a portrait card on the right.
+    write_setup(BACKGROUNDS / "trail-helvellyn.jpg", (1400, 788), vertical,
+                HERE / "setup-trail.jpg", "top-right", 0.03,
+                height_frac=0.92)
+    # A 16:9 video frame, a banner across the bottom, speed mode.
+    write_setup(BACKGROUNDS / "cycling-yellowstone.jpg", (1400, 788), speed,
+                HERE / "setup-cycling.jpg", "bottom-center", 0.04,
+                width_frac=0.92)
+    # A square social post, the card at the left.
+    write_setup(BACKGROUNDS / "city-jogger.jpg", (1000, 1000), vertical,
+                HERE / "setup-city.jpg", "bottom-left", 0.04,
+                height_frac=0.86)
 
 
 if __name__ == "__main__":

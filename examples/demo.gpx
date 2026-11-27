@@ -2,11 +2,11 @@
 <gpx version="1.1" creator="running-card"
      xmlns="http://www.topografix.com/GPX/1/1">
   <metadata>
-    <name>Morning loop</name>
+    <name>demo</name>
     <time>2026-11-22T09:12:00Z</time>
   </metadata>
   <trk>
-    <name>Morning loop</name>
+    <name>demo</name>
     <trkseg>
       <trkpt lat="48.796678" lon="9.180033"><ele>498.0</ele><time>2026-11-22T09:12:00Z</time></trkpt>
       <trkpt lat="48.796734" lon="9.180126"><ele>498.1</ele><time>2026-11-22T09:12:05Z</time></trkpt>
