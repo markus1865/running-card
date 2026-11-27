@@ -86,6 +86,31 @@ def _elevation_gain_hysteresis(elevations: list, band: float) -> float:
     return gain
 
 
+def _normalise_points(lats, lons):
+    """Map positions to [0, 1] with north up and the true shape of the track.
+
+    Longitude degrees are shorter than latitude degrees away from the equator,
+    so the longitudes get the cos(latitude) correction. Both axes then use one
+    scale. The shorter axis sits centred in the unit square, so a route keeps
+    its shape when the render box has another aspect ratio.
+    """
+    if not lats:
+        return []
+    lat_mid = (min(lats) + max(lats)) / 2
+    k = math.cos(math.radians(lat_mid))
+    xs = [lon * k for lon in lons]
+    ys = list(lats)
+    x0, x1 = min(xs), max(xs)
+    y0, y1 = min(ys), max(ys)
+    span = max(x1 - x0, y1 - y0) or 1e-9
+    off_x = (1.0 - (x1 - x0) / span) / 2
+    off_y = (1.0 - (y1 - y0) / span) / 2
+    return [
+        ((x - x0) / span + off_x, 1.0 - ((y - y0) / span + off_y))
+        for x, y in zip(xs, ys)
+    ]
+
+
 def parse_gpx(path: str, ele_band: float = 1.0):
     """Parse a GPX file. Returns (total_seconds, distance_km, elevation_gain_m, norm_points, elevations).
     norm_points is a list of (x, y) in [0,1] with north-up, or [] if no track.
@@ -153,19 +178,10 @@ def parse_gpx(path: str, ele_band: float = 1.0):
     elevs = [p[3] for p in points if p[3] is not None]
     elevation_gain_m = _elevation_gain_hysteresis(elevs, band=ele_band)
 
-    # Normalise to [0,1] keeping aspect ratio (north-up)
+    # Normalise to [0,1] with the true shape of the track (north-up)
     lats = [p[0] for p in points]
     lons = [p[1] for p in points]
-    min_lat, max_lat = min(lats), max(lats)
-    min_lon, max_lon = min(lons), max(lons)
-    lat_span = max_lat - min_lat or 1e-9
-    lon_span = max_lon - min_lon or 1e-9
-
-    norm = [
-        ((p[1] - min_lon) / lon_span,
-         1.0 - (p[0] - min_lat) / lat_span)
-        for p in points
-    ]
+    norm = _normalise_points(lats, lons)
     raw_elevations = [p[3] for p in points if p[3] is not None]
     return total_seconds, distance_km, elevation_gain_m, norm, raw_elevations
 
@@ -265,15 +281,7 @@ def parse_fit(path: str, ele_band: float = 1.0, distance_source: str = "footpod"
     if pos_records:
         lats = [p[0] for p in pos_records]
         lons = [p[1] for p in pos_records]
-        min_lat, max_lat = min(lats), max(lats)
-        min_lon, max_lon = min(lons), max(lons)
-        lat_span = max_lat - min_lat or 1e-9
-        lon_span = max_lon - min_lon or 1e-9
-        norm = [
-            ((p[1] - min_lon) / lon_span,
-             1.0 - (p[0] - min_lat) / lat_span)
-            for p in pos_records
-        ]
+        norm = _normalise_points(lats, lons)
     else:
         norm = []
 
@@ -435,8 +443,13 @@ def render_route(norm_points, width: int, height: int) -> Image.Image:
     iw = width  * S * (1 - 2 * margin)
     ih = height * S * (1 - 2 * margin)
 
+    # One scale for both axes, so the route keeps its shape in any box.
+    side = min(iw, ih)
+    ox = mx + (iw - side) / 2
+    oy = my + (ih - side) / 2
+
     def to_px(nx, ny):
-        return (int(mx + nx * iw), int(my + ny * ih))
+        return (int(ox + nx * side), int(oy + ny * side))
 
     pts = [to_px(x, y) for x, y in norm_points]
 
@@ -767,15 +780,16 @@ def generate_card(
         stats_total_w = sum(col_widths) + stat_gap * (len(stats) - 1)
         max_stat_h    = max(lh + pad // 2 + vh for lw, lh, vw, vh, uw, uh in measurements)
 
-        # Route: fixed fraction of total width
+        # Route: the space that the stats columns leave on the right
         if has_route:
             route_w = canvas_w - stats_total_w - 3 * pad
-            route_h = max_stat_h + 2 * pad
         else:
             route_w = 0
-            route_h = 0
 
         canvas_h = height or (max_stat_h + 2 * pad)
+        # The route uses the full height of the stats row, so --height also
+        # controls the size of the route.
+        route_h = canvas_h if has_route else 0
 
         # Elevation graph sits below everything in horizontal layout
         ele_graph_h = (canvas_h // 2) if has_ele_graph else 0
